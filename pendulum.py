@@ -3,7 +3,6 @@ import time
 import pybullet_data
 import numpy as np
 import matplotlib.pyplot as plt
-from gitdb.db import git
 from scipy.integrate import odeint
 
 def euler_method(theta_0, omega_0, t, L, g, dt):
