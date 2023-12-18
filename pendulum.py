@@ -64,6 +64,7 @@ plt.plot(t, theta, color='orange')
 plt.xlabel('t, сек'), plt.ylabel('θ, рад')
 plt.title('Численное решение ДУ')
 
+# Решение ДУ методом Эйлера
 theta = euler_method(q0, 0, t, L, g, dt)
 plt.subplot(1, 3, 3)
 plt.plot(t, theta, color='g')
