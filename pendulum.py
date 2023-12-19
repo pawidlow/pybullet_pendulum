@@ -35,7 +35,7 @@ p.setJointMotorControl2(bodyIndex=boxId, jointIndex=1, targetVelocity=0, control
 
 # Построение графика угла отклонения маятника
 angle = []
-t_max = 4
+t_max = 0.1
 t = np.arange(0, t_max, dt)
 for i in range(len(t)):
     angle.append(p.getJointState(bodyUniqueId=boxId, jointIndex=1)[0])
@@ -43,11 +43,7 @@ for i in range(len(t)):
     time.sleep(dt)
     i += 1
 
-plt.figure(figsize = (13, 5.5))
-plt.subplot(1, 3, 1)
-plt.plot(t, angle)
-plt.xlabel('t, сек'), plt.ylabel('θ, рад')
-plt.title('Динамика угла отклонения маятника')
+plt.plot(t, angle, label = 'симулятор')
 
 # Численное решение ДУ
 def model(y, t, g, L):
@@ -57,18 +53,27 @@ def model(y, t, g, L):
     return [dtheta_dt, domega_dt]
 
 sol = odeint(model, [q0, 0], t, args=(g, L))
-theta = sol[:, 0]
+theta1 = sol[:, 0]
 
-plt.subplot(1, 3, 2)
-plt.plot(t, theta, color='orange')
-plt.xlabel('t, сек'), plt.ylabel('θ, рад')
-plt.title('Численное решение ДУ')
+plt.plot(t, theta1, color='orange', label = 'odeint')
 
-# Решение ДУ методом Эйлера
-theta = euler_method(q0, 0, t, L, g, dt)
-plt.subplot(1, 3, 3)
-plt.plot(t, theta, color='g')
+# Неявный метод Эйлера (симплектический)
+theta2 = euler_method(q0, 0, t, L, g, dt)
+plt.plot(t, theta2, color='g', label = 'неявный метод Эйлера')
 plt.xlabel('t, сек'), plt.ylabel('θ, рад')
-plt.title('Решение, полученное методом Эйлера')
-plt.tight_layout()
+plt.title('Изменение угла отклонения маятника')
+plt.legend(loc='lower left')
 plt.show()
+
+# Сравнение траекторий
+diff1 = np.array(angle) - np.array(theta1)
+diff2 = np.array(angle) - np.array(theta2)
+norm1 = np.linalg.norm(diff1)
+norm2 = np.linalg.norm(diff2)
+linf_norm1 = np.linalg.norm(diff1, ord=np.inf)
+linf_norm2 = np.linalg.norm(diff2, ord=np.inf)
+print('Евклидова норма для симулятора-odeint =', norm1)
+print('Евклидова норма для симулятора-эйлера =', norm2)
+print('Linf-норма для симулятора-odeint =', linf_norm1)
+print('Linf-норма для симулятора-эйлера =', linf_norm2)
+
