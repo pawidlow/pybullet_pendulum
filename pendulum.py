@@ -15,8 +15,8 @@ def euler_method(theta_0, omega_0, t, L, g, dt):
     return theta_values
 
 dt = 1/240 # pybullet simulation step
-q0 = 0.3  # starting position (radian)
-g, L = 9.8, 0.8
+q0 = 1.5  # starting position (radian)
+g, L, m = 9.8, 0.8, 1
 physicsClient = p.connect(p.GUI) # or p.DIRECT for non-graphical version
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
 p.setGravity(0,0,-g)
@@ -35,14 +35,13 @@ p.setJointMotorControl2(bodyIndex=boxId, jointIndex=1, targetVelocity=0, control
 
 # Построение графика угла отклонения маятника
 angle = []
-t_max = 0.1
+t_max = 3
 t = np.arange(0, t_max, dt)
 for i in range(len(t)):
     angle.append(p.getJointState(bodyUniqueId=boxId, jointIndex=1)[0])
     p.stepSimulation()
     time.sleep(dt)
     i += 1
-
 plt.plot(t, angle, label = 'симулятор')
 
 # Численное решение ДУ
@@ -77,3 +76,118 @@ print('Евклидова норма для симулятора-эйлера ='
 print('Linf-норма для симулятора-odeint =', linf_norm1)
 print('Linf-норма для симулятора-эйлера =', linf_norm2)
 
+
+# go to the starting position
+p.setJointMotorControl2(bodyIndex=boxId, jointIndex=1, targetPosition=q0, controlMode=p.POSITION_CONTROL)
+for _ in range(1000):
+    p.stepSimulation()
+# turn off the motor for the free motion
+p.setJointMotorControl2(bodyIndex=boxId, jointIndex=1, targetVelocity=0, controlMode=p.VELOCITY_CONTROL, force=0)
+
+
+#P controller
+desired_angle = -0.5
+kp = 5
+error = 0.1
+angle = []
+for i in range(len(t)):
+    current_angle = p.getJointState(bodyUniqueId=boxId, jointIndex=1)[0]
+    angle.append(current_angle)
+    error = desired_angle - current_angle
+    p.setJointMotorControl2(bodyIndex=boxId, jointIndex=1, targetVelocity=kp*error, controlMode=p.VELOCITY_CONTROL)
+    p.stepSimulation()
+    time.sleep(dt)
+
+plt.plot(t, angle, label='P controller')
+
+p.setJointMotorControl2(bodyIndex=boxId, jointIndex=1, targetPosition=q0, controlMode=p.POSITION_CONTROL)
+for _ in range(1000):
+    p.stepSimulation()
+p.setJointMotorControl2(bodyIndex=boxId, jointIndex=1, targetVelocity=0, controlMode=p.VELOCITY_CONTROL, force=0)
+
+
+#PID controller kd = 6
+kp = 20
+ki = 10
+kd = 6
+error = 0.1
+angle = []
+
+prev_error = 0
+integral_error = 0
+
+for i in range(len(t)):
+    current_angle = p.getJointState(bodyUniqueId=boxId, jointIndex=1)[0]
+    angle.append(current_angle)
+    error = desired_angle - current_angle
+    integral_error += error * dt
+    derivative_error = (error - prev_error) / dt
+    control_torque = kp * error + ki * integral_error + kd * derivative_error
+    p.setJointMotorControl2(bodyIndex=boxId, jointIndex=1, controlMode=p.TORQUE_CONTROL, force=control_torque)
+    prev_error = error
+    p.stepSimulation()
+    time.sleep(dt)
+
+plt.plot(t, angle, label='PID kd = 6', color='g')
+plt.grid()
+
+
+p.setJointMotorControl2(bodyIndex=boxId, jointIndex=1, targetPosition=q0, controlMode=p.POSITION_CONTROL)
+for _ in range(1000):
+    p.stepSimulation()
+p.setJointMotorControl2(bodyIndex=boxId, jointIndex=1, targetVelocity=0, controlMode=p.VELOCITY_CONTROL, force=0)
+
+
+#PID controller kd = 11
+kp = 20
+ki = 10
+kd = 11
+error = 0.1
+angle = []
+
+prev_error = 0
+integral_error = 0
+
+for i in range(len(t)):
+    current_angle = p.getJointState(bodyUniqueId=boxId, jointIndex=1)[0]
+    angle.append(current_angle)
+    error = desired_angle - current_angle
+    integral_error += error * dt
+    derivative_error = (error - prev_error) / dt
+    control_torque = kp * error + ki * integral_error + kd * derivative_error
+    p.setJointMotorControl2(bodyIndex=boxId, jointIndex=1, controlMode=p.TORQUE_CONTROL, force=control_torque)
+    prev_error = error
+    p.stepSimulation()
+    time.sleep(dt)
+
+plt.plot(t, angle, label='PID kd = 11', color='orange')
+plt.grid(True)
+plt.xlabel('time, сек'), plt.ylabel('angle, рад')
+plt.title('Изменение угла отклонения маятника')
+
+
+p.setJointMotorControl2(bodyIndex=boxId, jointIndex=1, targetPosition=q0, controlMode=p.POSITION_CONTROL)
+for _ in range(1000):
+    p.stepSimulation()
+p.setJointMotorControl2(bodyIndex=boxId, jointIndex=1, targetVelocity=0, controlMode=p.VELOCITY_CONTROL, force=0)
+
+
+#Feedback Linearization
+k1 = 150
+k2 = 25
+damping = 1
+angle = []
+for i in range(len(t)):
+    state = p.getJointState(bodyUniqueId=boxId, jointIndex=1)
+    angle.append(state[0])
+    x1 = state[0] - desired_angle
+    x2 = state[1]
+    u = g/L * np.sin(state[0]) - k1 * x1 - k2 * x2 - damping/(m*L*L)
+    p.setJointMotorControl2(bodyIndex=boxId, jointIndex=1, controlMode=p.TORQUE_CONTROL, force=u)
+    p.stepSimulation()
+    time.sleep(dt)
+
+plt.plot(t, angle, color='k', label = 'Feedback Linearization')
+plt.axhline(y=desired_angle, color='r', label='desired angle', linestyle='--')
+plt.legend(loc='upper right')
+plt.show()
