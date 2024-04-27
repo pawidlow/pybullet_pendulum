@@ -17,7 +17,7 @@ def euler_method(theta_0, omega_0, t, L, g, dt):
 dt = 1/240 # pybullet simulation step
 q0 = 1.5  # starting position (radian)
 g, L, m = 9.8, 0.8, 1
-physicsClient = p.connect(p.GUI) # or p.DIRECT for non-graphical version
+physicsClient = p.connect(p.DIRECT) # or p.DIRECT for non-graphical version
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
 p.setGravity(0,0,-g)
 planeId = p.loadURDF("plane.urdf")
@@ -40,7 +40,7 @@ t = np.arange(0, t_max, dt)
 for i in range(len(t)):
     angle.append(p.getJointState(bodyUniqueId=boxId, jointIndex=1)[0])
     p.stepSimulation()
-    time.sleep(dt)
+    #time.sleep(dt)
     i += 1
 plt.plot(t, angle, label = 'симулятор')
 
@@ -96,7 +96,7 @@ for i in range(len(t)):
     error = desired_angle - current_angle
     p.setJointMotorControl2(bodyIndex=boxId, jointIndex=1, targetVelocity=kp*error, controlMode=p.VELOCITY_CONTROL)
     p.stepSimulation()
-    time.sleep(dt)
+    #time.sleep(dt)
 
 plt.plot(t, angle, label='P controller')
 
@@ -126,7 +126,7 @@ for i in range(len(t)):
     p.setJointMotorControl2(bodyIndex=boxId, jointIndex=1, controlMode=p.TORQUE_CONTROL, force=control_torque)
     prev_error = error
     p.stepSimulation()
-    time.sleep(dt)
+    #time.sleep(dt)
 
 plt.plot(t, angle, label='PID kd = 6', color='g')
 plt.grid()
@@ -158,7 +158,7 @@ for i in range(len(t)):
     p.setJointMotorControl2(bodyIndex=boxId, jointIndex=1, controlMode=p.TORQUE_CONTROL, force=control_torque)
     prev_error = error
     p.stepSimulation()
-    time.sleep(dt)
+    #time.sleep(dt)
 
 plt.plot(t, angle, label='PID kd = 11', color='orange')
 plt.grid(True)
@@ -182,10 +182,10 @@ for i in range(len(t)):
     angle.append(state[0])
     x1 = state[0] - desired_angle
     x2 = state[1]
-    u = g/L * np.sin(state[0]) - k1 * x1 - k2 * x2 - damping/(m*L*L)
+    u = (g/L * np.sin(state[0]) - k1 * x1 - k2 * x2 + damping*x2/(m*L*L))*(m*L*L)
     p.setJointMotorControl2(bodyIndex=boxId, jointIndex=1, controlMode=p.TORQUE_CONTROL, force=u)
     p.stepSimulation()
-    time.sleep(dt)
+    #time.sleep(dt)
 
 plt.plot(t, angle, color='k', label = 'Feedback Linearization')
 plt.axhline(y=desired_angle, color='r', label='desired angle', linestyle='--')
